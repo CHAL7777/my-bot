@@ -1,0 +1,196 @@
+
+{% extends "base.html" %}
+
+{% block title %}{{ subject.subject_name }} - Admin Panel{% endblock %}
+
+{% block content %}
+<!-- Header with beautiful styling -->
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4">
+    <div>
+        <div class="d-flex align-items-center mb-2">
+            <span class="display-6 me-2">📖</span>
+            <h1 class="h2 mb-0">{{ subject.subject_name }}</h1>
+        </div>
+        <span class="badge {% if subject.is_active %}bg-success{% else %}bg-secondary{% endif %} fs-6">
+            {{ '✅ Active' if subject.is_active else '❌ Inactive' }}
+        </span>
+    </div>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="/subjects" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Subjects
+        </a>
+    </div>
+</div>
+
+<!-- Description Card -->
+{% if subject.description %}
+<div class="card mb-4 border-0 shadow-sm">
+    <div class="card-body bg-light rounded">
+        <div class="d-flex align-items-start">
+            <span class="display-6 me-3 mt-1">📝</span>
+            <div>
+                <h6 class="text-muted mb-2 small text-uppercase fw-bold">Description</h6>
+                <p class="mb-0 lead fs-6">{{ subject.description }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-info d-flex align-items-center mb-4">
+    <span class="me-2">💡</span>
+    <span>No description added yet. Add one to help users understand this subject.</span>
+</div>
+{% endif %}
+
+<!-- Stats Row -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm h-100">
+            <div class="card-body">
+                <span class="display-6 d-block mb-2">📚</span>
+                <h3 class="mb-0">{{ chapters_with_counts|length }}</h3>
+                <small class="text-muted">Chapters</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm h-100">
+            <div class="card-body">
+                <span class="display-6 d-block mb-2">❓</span>
+                <h3 class="mb-0">{{ chapters_with_counts|sum(attribute='question_count') }}</h3>
+                <small class="text-muted">Total Questions</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm h-100">
+            <div class="card-body">
+                <span class="display-6 d-block mb-2">✅</span>
+                <h3 class="mb-0">{{ chapters_with_counts|selectattr('question_count', 'gt', 0)|list|length }}</h3>
+                <small class="text-muted">Active Chapters</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm h-100">
+            <div class="card-body">
+                <span class="display-6 d-block mb-2">📊</span>
+                <h3 class="mb-0">{{ ((chapters_with_counts|sum(attribute='question_count') / max(1, (chapters_with_counts|length))) | round | int) }}</h3>
+                <small class="text-muted">Avg Questions/Chapter</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Chapters List -->
+    <div class="col-md-8">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="mb-0">
+                <span class="me-2">📑</span>Chapters
+                <span class="badge bg-secondary ms-2">{{ chapters_with_counts|length }}</span>
+            </h4>
+        </div>
+        
+        {% if chapters_with_counts %}
+        <div class="row g-3">
+            {% for item in chapters_with_counts %}
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="d-flex align-items-start">
+                                <span class="display-6 me-3">
+                                    {% if item.question_count == 0 %}
+                                    📭
+                                    {% elif item.question_count < 10 %}
+                                    📖
+                                    {% elif item.question_count < 50 %}
+                                    📚
+                                    {% else %}
+                                    🎯
+                                    {% endif %}
+                                </span>
+                                <div>
+                                    <h5 class="card-title mb-1">{{ item.chapter.chapter_name }}</h5>
+                                    {% if item.chapter.description %}
+                                    <p class="text-muted small mb-2">{{ item.chapter.description }}</p>
+                                    {% endif %}
+                                    <div class="d-flex gap-2">
+                                        <span class="badge bg-light text-dark">
+                                            <i class="bi bi-hash"></i> Order: {{ item.chapter.chapter_order }}
+                                        </span>
+                                        <span class="badge {% if item.question_count > 0 %}bg-success{% else %}bg-warning{% endif %}">
+                                            <i class="bi bi-question-circle"></i> {{ item.question_count }} questions
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="btn-group">
+                                <a href="/questions?chapter_id={{ item.chapter.chapter_id }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-list"></i> Questions
+                                </a>
+                                <a href="/subjects/{{ subject.subject_id }}/edit_chapter/{{ item.chapter.chapter_id }}" class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-5 bg-light rounded">
+            <span class="display-1 d-block mb-3">📭</span>
+            <h5 class="text-muted">No chapters yet</h5>
+            <p class="text-muted">Add your first chapter to get started!</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Add Chapter Form -->
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm sticky-top" style="top: 20px; z-index: 100;">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-plus-circle me-2"></i>Add New Chapter
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="/subjects/{{ subject.subject_id }}/add_chapter">
+                    <div class="mb-3">
+                        <label for="chapter_name" class="form-label fw-bold">
+                            <span class="me-1">📖</span>Chapter Name *
+                        </label>
+                        <input type="text" class="form-control" id="chapter_name" name="chapter_name" 
+                               placeholder="e.g., Introduction to {{ subject.subject_name }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="chapter_order" class="form-label fw-bold">
+                            <span class="me-1">🔢</span>Order
+                        </label>
+                        <input type="number" class="form-control" id="chapter_order" name="chapter_order" 
+                               value="0" min="0" placeholder="Display order">
+                        <div class="form-text">Lower numbers appear first</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label fw-bold">
+                            <span class="me-1">📝</span>Description
+                        </label>
+                        <textarea class="form-control" id="description" name="description" rows="3"
+                                  placeholder="Brief description of this chapter..."></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100 py-2">
+                        <i class="bi bi-plus-lg me-2"></i>Add Chapter
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

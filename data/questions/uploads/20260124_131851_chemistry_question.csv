@@ -1,0 +1,89 @@
+subject,chapter,difficulty,question_text,option_a,option_b,option_c,option_d,correct_option,explanation
+Chemistry,Atomic Structure,simple,What is the charge of a proton?,1,-1,0,2,A,Protons carry a positive charge of +1.
+Chemistry,Atomic Structure,simple,Which subatomic particle is found in the nucleus?,Electron,Proton,Neutron,Both B and C,D,The nucleus contains protons and neutrons.
+Chemistry,Atomic Structure,simple,What is the atomic number of carbon?,6,12,14,8,A,Carbon has 6 protons so its atomic number is 6.
+Chemistry,Atomic Structure,simple,How many electrons are in a neutral oxygen atom?,6,8,16,4,B,Oxygen has atomic number 8 so it has 8 electrons.
+Chemistry,Atomic Structure,simple,Isotopes differ in the number of:,Protons,Electrons,Neutrons,Both A and B,C,Isotopes have the same number of protons but different neutrons.
+Chemistry,Atomic Structure,simple,Which element has the symbol Na?,Nitrogen,Sodium,Neon,Nickel,B,Na is the chemical symbol for sodium.
+Chemistry,Atomic Structure,simple,What does the mass number represent?,Protons only,Protons + Electrons,Protons + Neutrons,Neutrons only,C,Mass number = protons + neutrons.
+Chemistry,Atomic Structure,simple,Which scientist proposed the planetary model?,J.J. Thomson,Ernest Rutherford,Niels Bohr,John Dalton,C,Niels Bohr proposed the Bohr model with fixed orbits.
+Chemistry,Atomic Structure,simple,What is the charge of an electron?,1,-1,0,2,B,Electrons carry a negative charge.
+Chemistry,Atomic Structure,simple,Which particle has the smallest mass?,Proton,Neutron,Electron,Nucleus,C,Electrons have much smaller mass than protons.
+Chemistry,Atomic Structure,medium,How many neutrons are in carbon-14?,6,8,14,20,B,14 - 6 protons = 8 neutrons.
+Chemistry,Atomic Structure,medium,Which quantum number defines orbital shape?,n,l,ml,ms,B,The azimuthal quantum number (l) defines shape.
+Chemistry,Atomic Structure,medium,Which configuration is correct for Nitrogen (Z=7)?,1s2 2s2 2p3,1s2 2s2 2p6,1s2 2s2 2p5,1s2 2s2 2p6 3s1,A,Nitrogen has 7 electrons.
+Chemistry,Atomic Structure,medium,Highest first ionization energy among these?,Na,Mg,Al,Cl,D,IE increases across a period.
+Chemistry,Atomic Structure,medium,Max electrons in n=3 shell?,8,18,32,2,B,Formula 2n^2 gives 18.
+Chemistry,Atomic Structure,medium,Which is an isoelectronic series?,"Na+, Mg2+, Al3+","O2-, F-, Ne","Li, Be, B","C, N, O",B,"O2-, F-, and Ne all have 10 electrons."
+Chemistry,Atomic Structure,medium,Which series is in the visible region?,Lyman,Balmer,Paschen,Brackett,B,Balmer series is visible light.
+Chemistry,Atomic Structure,medium,Electron configuration of Fe2+,[Ar] 4s2 3d6,[Ar] 3d6,[Ar] 4s2 3d4,[Ar] 3d5,B,Fe2+ loses 4s electrons first.
+Chemistry,Atomic Structure,medium,No two electrons have same 4 quantum numbers?,Aufbau,Pauli,Hund,Heisenberg,B,This is the Pauli Exclusion Principle.
+Chemistry,Atomic Structure,hard,Wavelength of electron at 1/100th speed of light,2.42e-10 m,2.42e-12 m,2.42e-8 m,2.42e-15 m,A,Calculated using De Broglie equation.
+Chemistry,Atomic Structure,hard,Transition from n=4 to n=2 belongs to?,Lyman,Balmer,Paschen,Brackett,B,Any transition to n=2 is Balmer.
+Chemistry,Atomic Structure,hard,How many orbitals in n=4 shell?,4,9,16,32,C,Orbitals = n^2 = 16.
+Chemistry,Atomic Structure,hard,Which ion has the largest radius?,O2-,F-,Na+,Mg2+,A,Highest electron repulsion/lowest nuclear charge ratio.
+Chemistry,Atomic Structure,hard,Chlorine EA is higher than Fluorine because:,Electronegativity,Shell count,Small size of F,Shielding,C,Fluorine small size causes electron repulsion.
+Chemistry,Atomic Structure,hard,Which set of quantum numbers is invalid?,"n=3, l=2, m=-1","n=2, l=1, m=0","n=1, l=1, m=0","n=4, l=3, m=2",C,"For n=1, l must be 0."
+Chemistry,Atomic Structure,hard,Average atomic mass of Boron (10B/11B),10.81 amu,10.50 amu,11.00 amu,10.01 amu,A,Weighted average of isotopes.
+Chemistry,Atomic Structure,hard,Highest electronegativity?,Cl,F,O,N,B,Fluorine is the most electronegative.
+Chemistry,Atomic Structure,hard,Unpaired electrons in ground-state Oxygen?,0,1,2,4,C,Oxygen has 2 unpaired p-electrons.
+Chemistry,Atomic Structure,hard,Which transition emits shortest wavelength?,n=3 to 2,n=4 to 2,n=5 to 2,n=6 to 2,D,Highest energy drop = shortest wavelength.
+Chemistry,Chemical Bonding,simple,Which bond shares electrons?,Ionic,Covalent,Metallic,Hydrogen,B,Covalent bonds involve sharing.
+Chemistry,Chemical Bonding,simple,NaCl bond type?,Covalent,Ionic,Metallic,Coordinate,B,NaCl is ionic.
+Chemistry,Chemical Bonding,simple,Valence electrons in Carbon?,2,4,6,8,B,Carbon is in Group 14.
+Chemistry,Chemical Bonding,simple,Which molecule has a triple bond?,H2,O2,N2,Cl2,C,Nitrogen gas has a triple bond.
+Chemistry,Chemical Bonding,simple,Shape of Methane (CH4)?,Linear,Trigonal planar,Tetrahedral,Bent,C,CH4 is tetrahedral.
+Chemistry,Chemical Bonding,simple,Strongest bond type?,Single,Double,Triple,All equal,C,Triple bonds have highest bond enthalpy.
+Chemistry,Chemical Bonding,simple,Which molecule is polar?,CO2,CH4,H2O,CCl4,C,Water is polar due to bent shape.
+Chemistry,Chemical Bonding,medium,Which molecule is sp hybridized?,CH4,C2H4,C2H2,NH3,C,Acetylene (C2H2) is sp linear.
+Chemistry,Chemical Bonding,medium,Bond angle in H2O?,90,104.5,109.5,120,B,Lone pairs reduce angle to 104.5.
+Chemistry,Chemical Bonding,medium,Which exhibits resonance?,CO2,O3,CH4,NH3,B,Ozone (O3) has resonance.
+Chemistry,Chemical Bonding,medium,Intermolecular force that is strongest?,London,Dipole-Dipole,Hydrogen bond,Ion-dipole,C,Hydrogen bonding is strongest among these.
+Chemistry,Chemical Bonding,medium,Which has dipole moment of zero?,H2O,NH3,CO2,CHCl3,C,CO2 is linear and cancels out.
+Chemistry,Chemical Bonding,medium,Hybridization of Carbon in CH4?,sp,sp2,sp3,sp3d,C,Tetrahedral carbon is sp3.
+Chemistry,Chemical Bonding,hard,Bond order of O2,1,2,2.5,3,B,Oxygen gas has a double bond (BO=2).
+Chemistry,Chemical Bonding,hard,Violates octet rule?,NH3,BF3,CH4,H2O,B,Boron in BF3 has only 6 electrons.
+Chemistry,Chemical Bonding,hard,Molecular geometry of ClF3?,Trigonal planar,T-shaped,Tetrahedral,Square planar,B,ClF3 is T-shaped (AX3E2).
+Chemistry,Chemical Bonding,hard,Which has both ionic and covalent bonds?,NaCl,CH4,NH4Cl,CO2,C,Ionic between NH4 and Cl; Covalent inside NH4.
+Chemistry,Chemical Bonding,hard,Hybridization of Sulfur in SO3?,sp,sp2,sp3,sp3d,B,SO3 is trigonal planar.
+Chemistry,Chemical Bonding,hard,Which molecule is paramagnetic?,O2,N2,H2,F2,A,O2 has 2 unpaired electrons in MO theory.
+Chemistry,Atomic Structure,simple,Who discovered the electron?,Rutherford,Thomson,Bohr,Chadwick,B,J.J. Thomson discovered the electron via cathode rays.
+Chemistry,Atomic Structure,simple,Which particle has no charge?,Proton,Neutron,Electron,Ion,B,Neutrons are neutral subatomic particles.
+Chemistry,Atomic Structure,simple,What is the symbol for gold?,Go,Gd,Au,Ag,C,Au comes from the Latin word Aurum.
+Chemistry,Atomic Structure,simple,How many periods are in the periodic table?,7,8,18,4,A,There are 7 horizontal periods.
+Chemistry,Atomic Structure,simple,Which group contains noble gases?,1,2,17,18,D,Group 18 elements have full valence shells.
+Chemistry,Atomic Structure,medium,Which element is [Ne]3s2 3p1?,Mg,Al,Si,P,B,Aluminum has atomic number 13.
+Chemistry,Atomic Structure,medium,Which is the largest atom?,Li,Na,K,Rb,D,Atomic radius increases down a group.
+Chemistry,Atomic Structure,medium,Which has the highest electron affinity?,F,Cl,Br,I,B,Chlorine has a higher EA than Fluorine due to less repulsion.
+Chemistry,Atomic Structure,medium,How many d-electrons does Fe have?,4,6,8,10,B,Iron ground state is [Ar] 4s2 3d6.
+Chemistry,Atomic Structure,medium,Which ion is smallest?,"Na+","Mg2+","Al3+","O2-",C,Al3+ has the highest proton-to-electron ratio.
+Chemistry,Atomic Structure,hard,Wavelength from n=3 to n=2 in H?,656 nm,486 nm,434 nm,410 nm,A,This is the red H-alpha line in the Balmer series.
+Chemistry,Atomic Structure,hard,Which has the greatest ionization energy?,B,C,N,O,C,Nitrogen has a stable half-filled p-subshell.
+Chemistry,Atomic Structure,hard,How many p-orbitals are in the n=3 shell?,1,3,5,7,B,Every p-subshell contains three p-orbitals (x, y, z).
+Chemistry,Atomic Structure,hard,Which element has the lowest melting point?,Li,Na,K,Cs,D,Melting point decreases down Group 1 metals.
+Chemistry,Atomic Structure,hard,De Broglie wavelength of 10 eV electron,3.9e-10 m,1.2e-9 m,2.5e-10 m,5.0e-10 m,A,Calculated using h/sqrt(2mE).
+Chemistry,Chemical Bonding,simple,How many bonds can carbon form?,2,3,4,6,C,Carbon is tetravalent.
+Chemistry,Chemical Bonding,simple,Which molecule is linear?,H2O,CO2,NH3,CH4,B,CO2 has two double bonds and no lone pairs on C.
+Chemistry,Chemical Bonding,simple,What is the formula for sodium chloride?,NaCl,Na2Cl,NaCl2,Na2Cl2,A,The ionic ratio is 1:1.
+Chemistry,Chemical Bonding,simple,Which bond is nonpolar?,H-Cl,O-H,Cl-Cl,C-O,C,Identical atoms share electrons equally.
+Chemistry,Chemical Bonding,simple,Which has the highest boiling point?,He,Ne,Ar,Xe,D,Xe has the strongest London dispersion forces.
+Chemistry,Chemical Bonding,medium,What is the shape of NH3?,Linear,Trigonal planar,Tetrahedral,Trigonal pyramidal,D,NH3 has three bonds and one lone pair.
+Chemistry,Chemical Bonding,medium,Which is a network covalent solid?,NaCl,Diamond,Fe,H2O,B,Diamond is a continuous lattice of C-C bonds.
+Chemistry,Chemical Bonding,medium,How many lone pairs are in H2O?,1,2,3,4,B,Oxygen has two lone pairs in a water molecule.
+Chemistry,Chemical Bonding,medium,Which molecule has the largest dipole moment?,CO2,CH4,NH3,BF3,C,NH3 is asymmetrical and highly polar.
+Chemistry,Chemical Bonding,medium,What is the bond order of N2?,1,2,3,4,C,Nitrogen atoms are held by a triple bond.
+Chemistry,Chemical Bonding,hard,Which has the highest lattice energy?,NaCl,MgO,KCl,CaO,B,MgO has +2/-2 charges and small ionic radii.
+Chemistry,Chemical Bonding,hard,Hybridization of iodine in ICl4-,sp3,sp3d,sp3d2,sp2,C,Iodine has 4 bonds and 2 lone pairs.
+Chemistry,Chemical Bonding,hard,Which molecule is square planar?,CH4,XeF4,NH3,H2O,B,XeF4 has octahedral electron geometry.
+Chemistry,Chemical Bonding,hard,What is the bond angle in PH3?,107,109.5,93,120,C,PH3 has very little hybridization.
+Chemistry,Chemical Bonding,hard,Which has the lowest boiling point?,CH4,SiH4,GeH4,SnH4,A,CH4 has the weakest intermolecular forces.
+Chemistry,Atomic Structure,simple,How many electrons can the 2p subshell hold?,2,6,10,14,B,The p-subshell (3 orbitals) holds 6 electrons.
+Chemistry,Atomic Structure,medium,Which has the highest metallic character?,Na,Mg,Al,Si,A,Metallic character decreases left to right.
+Chemistry,Atomic Structure,hard,Which ion has the largest hydration energy?,"Li+","Na+","K+","Rb+",A,Li+ is the smallest ion with the highest charge density.
+Chemistry,Chemical Bonding,simple,Which molecule has a double bond?,H2,O2,N2,F2,B,Oxygen atoms share two pairs of electrons.
+Chemistry,Chemical Bonding,medium,What is the VSEPR notation for CH4?,AX2,AX3,AX4,AX2E2,C,Methane has 4 bonding pairs and 0 lone pairs.
+Chemistry,Chemical Bonding,hard,Which has the highest bond dissociation energy?,F2,Cl2,Br2,I2,B,Cl2 is stronger than F2 due to less electronic repulsion.
+Chemistry,Atomic Structure,simple,Atomic mass unit (amu) is based on?,Mass of proton,Carbon-12,Hydrogen-1,Oxygen-16,B,1 amu is 1/12th the mass of Carbon-12.
+Chemistry,Atomic Structure,medium,Which has the smallest ionic radius?,"F-","Na+","Mg2+","O2-",C,Mg2+ is isoelectronic but has the most protons.
+Chemistry,Chemical Bonding,simple,Which bond is ionic?,H-H,Na-Cl,C-O,N-N,B,Na-Cl involves total electron transfer.
+Chemistry,Chemical Bonding,hard,What is the bond order of O2(2-)?,1,1.5,2,2.5,A,Peroxide ion has a single bond.

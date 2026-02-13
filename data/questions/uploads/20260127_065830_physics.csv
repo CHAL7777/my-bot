@@ -1,0 +1,11 @@
+subject,chapter,difficulty,question_text,option_a,option_b,option_c,option_d,correct_option,explanation
+Physics,Vectors,simple,"Which of the following is a scalar quantity?",Force,Velocity,Mass,Acceleration,C,"Scalar quantities have only magnitude, such as mass."
+Physics,Vectors,simple,"What is the unit vector in the direction of vector A?",A / |A|,|A| / A,A + B,A - B,A,Unit vector = Vector / Magnitude.
+Physics,Vectors,medium,"If vector A = 3i + 4j, what is its magnitude?",5,7,12,25,A,"|A| = √(3² + 4²) = 5."
+Physics,Vectors,medium,"What is the dot product of A = 2i + 3j and B = i - j?",-1,1,5,6,A,"A·B = (2*1) + (3*-1) = -1."
+Physics,Vectors,hard,"The cross product of two parallel vectors is:",Maximum,Zero,Same as dot product,Undefined,B,"Cross product of parallel vectors = 0 because sin(0°) = 0."
+Physics,Kinematics,simple,"What is the SI unit of displacement?",Meter,Second,m/s,"m/s²",A,"Displacement is a length, measured in meters."
+Physics,Kinematics,simple,"A car moves at constant speed. Its acceleration is:",Zero,Constant,Increasing,Decreasing,A,"Constant speed means no change in velocity → zero acceleration."
+Physics,Kinematics,medium,"If an object is thrown upwards, at the highest point its velocity is:",Maximum,Zero,Equal to initial velocity,Negative,B,"At highest point, vertical velocity = 0 m/s."
+Physics,Kinematics,medium,"A body moves with uniform acceleration. Which equation relates initial velocity, final velocity, acceleration, and displacement?",v = u + at,"s = ut + ½at²","v² = u² + 2as",All of the above,D,"All are equations of motion for uniform acceleration."
+Physics,Kinematics,hard,"In projectile motion, the horizontal component of velocity:",Changes with time,Is zero at max height,Remains constant,Depends on mass,C,"Horizontal velocity is constant (neglecting air resistance)."

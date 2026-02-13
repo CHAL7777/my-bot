@@ -1,0 +1,65 @@
+{
+  "name": "bot",
+  "description": "Telegram Quiz Bot with quizzes, leaderboards, and payment system",
+  "repository": "https://github.com/CHAL7777/bot",
+  "branch": "main",
+  "build": {
+    "type": "dockerfile",
+    "dockerfile_path": "Dockerfile",
+    "context": ".",
+    "target": null,
+    "build_args": {}
+  },
+  "run": {
+    "command": "bash start.sh",
+    "entrypoint": null,
+    "workdir": "/app",
+    "privileged": false,
+    "health_check": {
+      "path": "/ping",
+      "port": 10000,
+      "interval": 30,
+      "timeout": 10,
+      "start_period": 30,
+      "retries": 5
+    }
+  },
+  "config_vars": {
+    "DATABASE_URL": "",
+    "BOT_TOKEN": "",
+    "WEBHOOK_URL": "",
+    "PORT": "10000",
+    "DB_TYPE": "postgresql",
+    "DB_POOL_SIZE": "10",
+    "DB_MAX_OVERFLOW": "20",
+    "DATA_DIR": "/data",
+    "REDIS_URL": "",
+    "ADMIN_IDS": "",
+    "ENABLE_TRIAL": "false",
+    "SUBSCRIPTION_PRICE_30_DAYS": "500",
+    "SUBSCRIPTION_PRICE_90_DAYS": "1200",
+    "ONE_TIME_PRICE": "150",
+    "DAILY_QUIZ_LIMIT": "20",
+    "MAX_QUESTIONS_PER_QUIZ": "10",
+    "DAILY_QUESTION_LIMIT": "500",
+    "CURRENCY": "ETB",
+    "CURRENCY_SYMBOL": "ETB",
+    "REFERRAL_REWARD_THRESHOLD": "5",
+    "REFERRAL_REWARD_TYPE": "premium",
+    "REFERRAL_REWARD_DAYS": "30",
+    "BOT_USERNAME": "SmartITestExambot",
+    "API_RATE_LIMIT": "100"
+  },
+  "regions": ["eu", "us"],
+  "autoscaling": {
+    "min_instances": 1,
+    "max_instances": 3,
+    "scale_down_delay": 120,
+    "scale_up_delay": 30
+  },
+  "instance": {
+    "size": "small",
+    "type": "eco"
+  },
+  "tags": ["telegram", "bot", "quiz"]
+}

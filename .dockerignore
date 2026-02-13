@@ -1,0 +1,69 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+.eggs
+dist
+build
+*.egg
+
+# Documentation (optional - exclude to reduce image size)
+*.md
+docs/
+*.txt
+
+# Tests
+tests/
+test_*.py
+pytest.ini
+tox.ini
+
+# Local development
+.env
+.env.local
+*.log
+logs/*.log
+
+# Database (will be created in /data)
+data/*.db
+data/*.db-journal
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Docker files (not needed inside container)
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# IDE settings
+*.sublime-*
+
+# Vim
+*.un~
+
+# Jupyter
+.ipynb_checkpoints/
+

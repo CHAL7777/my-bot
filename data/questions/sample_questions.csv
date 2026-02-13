@@ -1,0 +1,200 @@
+
+## 2. DATABASE SETUP
+
+### `database_setup.sql`:
+```sql
+-- Create database and user
+CREATE DATABASE IF NOT EXISTS quiz_bot CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS 'quiz_user'@'localhost' IDENTIFIED BY 'your_password_here';
+GRANT ALL PRIVILEGES ON quiz_bot.* TO 'quiz_user'@'localhost';
+FLUSH PRIVILEGES;
+
+-- Use the database
+USE quiz_bot;
+
+-- Users table
+CREATE TABLE IF NOT EXISTS users (
+    user_id BIGINT PRIMARY KEY,
+    username VARCHAR(255),
+    first_name VARCHAR(255),
+    last_name VARCHAR(255),
+    role ENUM('student', 'admin') DEFAULT 'student',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    blocked BOOLEAN DEFAULT FALSE,
+    INDEX idx_username (username),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Subjects table
+CREATE TABLE IF NOT EXISTS subjects (
+    subject_id INT AUTO_INCREMENT PRIMARY KEY,
+    subject_name VARCHAR(100) UNIQUE NOT NULL,
+    description TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Chapters table
+CREATE TABLE IF NOT EXISTS chapters (
+    chapter_id INT AUTO_INCREMENT PRIMARY KEY,
+    subject_id INT,
+    chapter_name VARCHAR(100) NOT NULL,
+    chapter_order INT DEFAULT 0,
+    description TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (subject_id) REFERENCES subjects(subject_id) ON DELETE CASCADE,
+    UNIQUE KEY unique_chapter (subject_id, chapter_name),
+    INDEX idx_subject_order (subject_id, chapter_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Questions table
+CREATE TABLE IF NOT EXISTS questions (
+    question_id INT AUTO_INCREMENT PRIMARY KEY,
+    subject_id INT,
+    chapter_id INT,
+    difficulty ENUM('simple', 'medium', 'hard') NOT NULL,
+    question_text TEXT NOT NULL,
+    option_a TEXT NOT NULL,
+    option_b TEXT NOT NULL,
+    option_c TEXT NOT NULL,
+    option_d TEXT NOT NULL,
+    correct_option ENUM('A', 'B', 'C', 'D') NOT NULL,
+    explanation TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (subject_id) REFERENCES subjects(subject_id) ON DELETE CASCADE,
+    FOREIGN KEY (chapter_id) REFERENCES chapters(chapter_id) ON DELETE CASCADE,
+    INDEX idx_subject_chapter (subject_id, chapter_id),
+    INDEX idx_difficulty (difficulty),
+    INDEX idx_active (is_active),
+    FULLTEXT idx_question_text (question_text)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- User progress table
+CREATE TABLE IF NOT EXISTS user_progress (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT,
+    subject_id INT,
+    chapter_id INT,
+    difficulty ENUM('simple', 'medium', 'hard'),
+    total_attempts INT DEFAULT 0,
+    correct_attempts INT DEFAULT 0,
+    total_time_spent INT DEFAULT 0, -- in seconds
+    last_attempt TIMESTAMP NULL,
+    accuracy DECIMAL(5,2) DEFAULT 0.00,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (subject_id) REFERENCES subjects(subject_id) ON DELETE CASCADE,
+    FOREIGN KEY (chapter_id) REFERENCES chapters(chapter_id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_progress (user_id, subject_id, chapter_id, difficulty),
+    INDEX idx_user_progress (user_id, accuracy),
+    INDEX idx_subject_progress (subject_id, chapter_id, difficulty)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Quiz attempts table
+CREATE TABLE IF NOT EXISTS quiz_attempts (
+    attempt_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT,
+    question_id INT,
+    selected_option ENUM('A', 'B', 'C', 'D'),
+    is_correct BOOLEAN,
+    time_taken INT DEFAULT 0, -- in seconds
+    quiz_session_id VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (question_id) REFERENCES questions(question_id) ON DELETE CASCADE,
+    INDEX idx_user_attempts (user_id, created_at),
+    INDEX idx_question_attempts (question_id, is_correct),
+    INDEX idx_session (quiz_session_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Payments table
+CREATE TABLE IF NOT EXISTS payments (
+    payment_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT,
+    screenshot_file_id VARCHAR(255),
+    screenshot_file_path VARCHAR(500),
+    status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+    amount DECIMAL(10,2) NOT NULL,
+    subscription_days INT NOT NULL,
+    transaction_id VARCHAR(100),
+    notes TEXT,
+    approved_by BIGINT NULL,
+    approved_at TIMESTAMP NULL,
+    rejected_reason TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (approved_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_payment_status (status, created_at),
+    INDEX idx_user_payments (user_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Subscriptions table
+CREATE TABLE IF NOT EXISTS subscriptions (
+    subscription_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT,
+    payment_id INT,
+    status ENUM('active', 'expired', 'cancelled') DEFAULT 'active',
+    start_date TIMESTAMP NOT NULL,
+    end_date TIMESTAMP NOT NULL,
+    is_trial BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (payment_id) REFERENCES payments(payment_id) ON DELETE CASCADE,
+    UNIQUE KEY unique_active_subscription (user_id, status) WHERE status = 'active',
+    INDEX idx_subscription_dates (end_date, status),
+    INDEX idx_user_subscription (user_id, end_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Leaderboard table
+CREATE TABLE IF NOT EXISTS leaderboard (
+    leaderboard_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT,
+    period ENUM('daily', 'weekly', 'monthly', 'overall') NOT NULL,
+    total_score INT DEFAULT 0,
+    total_accuracy DECIMAL(5,2) DEFAULT 0.00,
+    total_questions INT DEFAULT 0,
+    rank_position INT DEFAULT 0,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    UNIQUE KEY unique_leaderboard_entry (user_id, period),
+    INDEX idx_leaderboard_period (period, rank_position),
+    INDEX idx_user_leaderboard (user_id, period)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- User daily limits table
+CREATE TABLE IF NOT EXISTS user_daily_limits (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT,
+    date DATE NOT NULL,
+    quiz_count INT DEFAULT 0,
+    question_count INT DEFAULT 0,
+    last_reset TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_user_date (user_id, date),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    INDEX idx_date_limit (date, quiz_count)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Insert default admin user (replace with actual admin ID)
+INSERT INTO users (user_id, username, role) 
+VALUES (123456789, 'admin', 'admin') 
+ON DUPLICATE KEY UPDATE role='admin';
+
+-- Insert sample subjects
+INSERT INTO subjects (subject_name, description) VALUES
+('Mathematics', 'Basic mathematics for remedial students'),
+('Science', 'General science questions'),
+('English', 'English grammar and vocabulary')
+ON DUPLICATE KEY UPDATE subject_name=VALUES(subject_name);
+
+-- Insert sample chapters for Mathematics
+INSERT INTO chapters (subject_id, chapter_name, chapter_order) 
+SELECT subject_id, 'Addition and Subtraction', 1 FROM subjects WHERE subject_name = 'Mathematics'
+UNION ALL
+SELECT subject_id, 'Multiplication and Division', 2 FROM subjects WHERE subject_name = 'Mathematics'
+UNION ALL
+SELECT subject_id, 'Fractions', 3 FROM subjects WHERE subject_name = 'Mathematics'
+ON DUPLICATE KEY UPDATE chapter_order=VALUES(chapter_order);

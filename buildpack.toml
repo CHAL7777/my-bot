@@ -1,0 +1,15 @@
+# This file is for specifying buildpack configuration
+# For Heroku, we use heroku/python buildpack with requirements.txt
+
+[buildpack]
+  id = "heroku/python"
+  version = "0.0.1"
+
+[[buildpacks]]
+  uri = "heroku/python"
+
+[project]
+  id = "telegram-quiz-bot"
+  version = "1.0.0"
+
+

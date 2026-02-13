@@ -1,0 +1,24 @@
+2026-01-23 23:43:28,485 - app.bot - INFO - Database initialized successfully
+2026-01-23 23:43:28,485 - app.bot - INFO - Starting Quiz Bot...
+2026-01-23 23:43:28,501 - app.bot - ERROR - Failed to start bot: cannot import name 'validate_telegram_input' from 'app.utils.validators' (/home/chaldev/Code-room/code-collection/bot/telegram-quiz-bot/app/utils/validators.py)
+2026-01-23 23:43:28,502 - app.bot - INFO - Event loop closed
+2026-01-23 23:44:33,745 - app.bot - INFO - Database initialized successfully
+2026-01-23 23:44:33,745 - app.bot - INFO - Starting Quiz Bot...
+2026-01-23 23:44:33,772 - app.bot - ERROR - Failed to start bot: cannot import name 'LeaderboardService' from 'app.services.leaderboard_service' (/home/chaldev/Code-room/code-collection/bot/telegram-quiz-bot/app/services/leaderboard_service.py)
+2026-01-23 23:44:33,773 - app.bot - INFO - Event loop closed
+2026-01-23 23:46:37,882 - app.bot - INFO - Database initialized successfully
+2026-01-23 23:46:37,882 - app.bot - INFO - Starting Quiz Bot...
+2026-01-23 23:46:37,928 - app.bot - ERROR - Failed to start bot: name 'StatesGroup' is not defined
+2026-01-23 23:46:37,929 - app.bot - INFO - Event loop closed
+2026-01-23 23:47:48,251 - app.bot - INFO - Database initialized successfully
+2026-01-23 23:47:48,251 - app.bot - INFO - Starting Quiz Bot...
+2026-01-23 23:47:48,285 - app.bot - ERROR - Failed to start bot: No module named 'apscheduler'
+2026-01-23 23:47:48,286 - app.bot - INFO - Event loop closed
+2026-01-23 23:48:56,384 - app.bot - INFO - Database initialized successfully
+2026-01-23 23:48:56,384 - app.bot - INFO - Starting Quiz Bot...
+2026-01-23 23:48:56,404 - app.bot - ERROR - Failed to start bot: No module named 'apscheduler'
+2026-01-23 23:48:56,405 - app.bot - INFO - Event loop closed
+2026-01-23 23:50:24,257 - app.bot - INFO - Database initialized successfully
+2026-01-23 23:50:24,257 - app.bot - INFO - Starting Quiz Bot...
+2026-01-23 23:50:24,277 - app.bot - ERROR - Failed to start bot: No module named 'apscheduler'
+2026-01-23 23:50:24,277 - app.bot - INFO - Event loop closed

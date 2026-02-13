@@ -1,0 +1,244 @@
+"""
+Admin Payment Approval Handler with Referral Integration
+
+This handler manages payment approval with:
+- Proper referral completion when payment is approved
+- Automatic reward granting when threshold is reached
+"""
+
+from aiogram import Router, types, F
+from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from datetime import datetime
+import asyncio
+
+from app.keyboards.admin import AdminKeyboard
+from app.utils.constants import EMOJIS
+from app.db.base import get_db
+from app.repositories.payment_repo import PaymentRepository
+from app.repositories.user_repo import UserRepository
+from app.repositories.referral_repo import ReferralRepository
+from app.services.referral_service import ReferralService
+from app.config import settings
+
+router = Router()
+
+
+async def approve_payment_with_referral(
+    payment_id: int, 
+    admin_id: int, 
+    bot
+) -> dict:
+    """
+    Approve payment and trigger referral completion.
+    
+    This function:
+    1. Approves the payment
+    2. Triggers referral completion for the referred user
+    3. Notifies the referrer if reward is granted
+    
+    Returns dict with approval details and referral info
+    """
+    async for session in get_db():
+        payment_repo = PaymentRepository(session)
+        user_repo = UserRepository(session)
+        referral_repo = ReferralRepository(session)
+        referral_service = ReferralService(referral_repo, user_repo)
+        
+        # Get payment and user first
+        payment = await payment_repo.get_payment(payment_id)
+        if not payment:
+            return {'success': False, 'error': 'Payment not found'}
+        
+        user = await user_repo.get_user(payment.user_id)
+        if not user:
+            return {'success': False, 'error': 'User not found'}
+        
+        # Approve payment
+        approved_payment = await payment_repo.approve_payment(payment_id, admin_id)
+        if not approved_payment:
+            return {'success': False, 'error': 'Payment already processed'}
+        
+        # Mark user as premium
+        await user_repo.update_user(payment.user_id, is_premium=True)
+        
+        # TRIGGER REFERRAL COMPLETION
+        # This counts the referral for the referrer
+        referral_result = await referral_service.complete_referral_on_payment_approval(payment.user_id)
+        
+        result = {
+            'success': True,
+            'payment_id': payment_id,
+            'user_id': payment.user_id,
+            'username': getattr(user, 'username', None),
+            'first_name': getattr(user, 'first_name', None),
+            'is_premium': True,
+            'referral_result': referral_result
+        }
+        
+        # Log referral completion
+        if referral_result.get('success'):
+            if referral_result.get('count_incremented'):
+                result['referrer_id'] = referral_result.get('referrer_id')
+                result['referral_completed'] = True
+                
+                # Check if reward was granted
+                if referral_result.get('reward_granted'):
+                    result['reward_granted'] = True
+                    result['reward_message'] = referral_result.get('reward_message', '')
+        
+        return result
+
+
+@router.callback_query(F.data.startswith("admin_payment_approve_"))
+async def admin_payment_approve_callback(callback: types.CallbackQuery, is_admin: bool = False):
+    """Approve payment with referral integration"""
+    if not is_admin:
+        await callback.answer("Access denied", show_alert=True)
+        return
+    
+    payment_id = int(callback.data.split("_")[-1])
+    admin_id = callback.from_user.id
+    
+    # Show confirmation
+    async for session in get_db():
+        payment_repo = PaymentRepository(session)
+        payment = await payment_repo.get_payment(payment_id)
+        
+        if not payment:
+            await callback.message.edit_text(
+                "❌ Payment not found!",
+                reply_markup=AdminKeyboard.get_back_to_admin_keyboard()
+            )
+            await callback.answer()
+            return
+        
+        user_repo = UserRepository(session)
+        user = await user_repo.get_user(payment.user_id)
+        username = f"@{user.username}" if user and user.username else f"ID: {payment.user_id}"
+    
+    confirm_text = (
+        f"{EMOJIS['approve']} *Confirm Payment Approval*\n\n"
+        f"Payment ID: #{payment_id}\n"
+        f"User: {username}\n"
+        f"Amount: {getattr(payment, 'amount', 0)}\n\n"
+        f"⚠️ This will:\n"
+        f"• Grant lifetime premium to user\n"
+        f"• Count any pending referral for this user\n"
+        f"• Notify the user\n\n"
+        f"Approve payment?"
+    )
+    
+    await callback.message.edit_text(
+        confirm_text,
+        parse_mode='Markdown',
+        reply_markup=AdminKeyboard.get_approve_confirmation_keyboard(payment_id)
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("confirm_approve_"))
+async def confirm_approve_callback(callback: types.CallbackQuery, is_admin: bool = False):
+    """Process payment approval with referral handling"""
+    if not is_admin:
+        await callback.answer("Access denied", show_alert=True)
+        return
+    
+    payment_id = int(callback.data.split("_")[-1])
+    admin_id = callback.from_user.id
+    
+    # Process approval
+    result = await approve_payment_with_referral(payment_id, admin_id, callback.bot)
+    
+    if result['success']:
+        # Notify user
+        try:
+            await callback.bot.send_message(
+                chat_id=result['user_id'],
+                text=(
+                    f"✅ *Payment Approved!*\n\n"
+                    f"🎉 Great news! Your payment has been approved.\n\n"
+                    f"📋 *Details:*\n"
+                    f"• Payment ID: #{payment_id}\n"
+                    f"• Access: Lifetime Premium\n\n"
+                    f"🎫 You now have full access to all quiz levels!\n"
+                    f"Use /quiz to start learning."
+                ),
+                parse_mode='Markdown'
+            )
+        except Exception as e:
+            print(f"Failed to notify user: {e}")
+        
+        # Notify referrer if referral was completed
+        if result.get('referral_completed'):
+            referrer_id = result.get('referrer_id')
+            try:
+                if result.get('reward_granted'):
+                    await callback.bot.send_message(
+                        chat_id=referrer_id,
+                        text=(
+                            f"🎁 *Referral Bonus!*\n\n"
+                            f"Someone you referred has completed payment!\n\n"
+                            f"{result.get('reward_message', '')}\n\n"
+                            f"Keep sharing to earn more rewards!"
+                        ),
+                        parse_mode='Markdown'
+                    )
+            except Exception as e:
+                print(f"Failed to notify referrer: {e}")
+        
+        # Show success to admin
+        success_text = (
+            f"✅ *Payment Approved*\n\n"
+            f"Payment #{payment_id} has been approved.\n"
+            f"User {result['user_id']} now has premium access.\n"
+        )
+        
+        if result.get('referral_completed'):
+            success_text += f"\n🔗 Referral completed for referrer #{result.get('referrer_id')}"
+            if result.get('reward_granted'):
+                success_text += "\n🎁 Reward granted to referrer!"
+        
+        await callback.message.edit_text(
+            success_text,
+            parse_mode='Markdown',
+            reply_markup=AdminKeyboard.get_back_to_admin_keyboard()
+        )
+    else:
+        error_text = f"❌ *Approval Failed*\n\n{result.get('error', 'Unknown error')}"
+        await callback.message.edit_text(
+            error_text,
+            parse_mode='Markdown',
+            reply_markup=AdminKeyboard.get_back_to_admin_keyboard()
+        )
+    
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin_payment_reject_"))
+async def admin_payment_reject_callback(callback: types.CallbackQuery, is_admin: bool = False):
+    """Start payment rejection process"""
+    if not is_admin:
+        await callback.answer("Access denied", show_alert=True)
+        return
+    
+    payment_id = int(callback.data.split("_")[-1])
+    
+    await callback.message.edit_text(
+        f"❌ *Reject Payment #{payment_id}*\n\n"
+        f"Please provide a reason for rejection:",
+        parse_mode='Markdown'
+    )
+    
+    await callback.answer()
+
+
+@router.message(F.text)
+async def handle_reject_reason(message: types.Message):
+    """Handle payment rejection with reason"""
+    # This would need FSM for proper implementation
+    await message.answer(
+        "Please use the inline buttons to reject payments.",
+        reply_markup=AdminKeyboard.get_back_to_admin_keyboard()
+    )

@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-tachometer-alt"></i> Dashboard</h1>
+            <small class="text-muted">Welcome back, {{ admin_user.username }}!</small>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Total Users</h5>
+                        <h3 id="total-users">0</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-users fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Active Subscriptions</h5>
+                        <h3 id="active-subscriptions">0</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-crown fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Pending Payments</h5>
+                        <h3 id="pending-payments">0</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-clock fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Questions</h5>
+                        <h3 id="total-questions">0</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-question-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-line"></i> User Growth (Last 30 Days)</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="userGrowthChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-pie"></i> Question Distribution</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="questionDistributionChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-clock"></i> Recent Activity</h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">New user registered</h6>
+                            <small>2 minutes ago</small>
+                        </div>
+                        <p class="mb-1">User @john_doe joined the bot</p>
+                    </div>
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Payment approved</h6>
+                            <small>5 minutes ago</small>
+                        </div>
+                        <p class="mb-1">Payment #1234 approved by admin</p>
+                    </div>
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Question added</h6>
+                            <small>10 minutes ago</small>
+                        </div>
+                        <p class="mb-1">New question added to Mathematics</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-exclamation-triangle"></i> System Status</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-success" role="alert">
+                    <i class="fas fa-check-circle"></i> Database: Healthy
+                </div>
+                <div class="alert alert-success" role="alert">
+                    <i class="fas fa-check-circle"></i> Bot Service: Running
+                </div>
+                <div class="alert alert-warning" role="alert">
+                    <i class="fas fa-exclamation-triangle"></i> High memory usage detected
+                </div>
+                <div class="alert alert-info" role="alert">
+                    <i class="fas fa-info-circle"></i> Last backup: 2 hours ago
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Sample data - replace with real data from your backend
+const userGrowthData = {
+    labels: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'],
+    datasets: [{
+        label: 'New Users',
+        data: [12, 19, 3, 5, 2, 3, 7],
+        borderColor: 'rgb(75, 192, 192)',
+        tension: 0.1
+    }]
+};
+
+const questionDistributionData = {
+    labels: ['Simple', 'Medium', 'Hard'],
+    datasets: [{
+        data: [300, 150, 100],
+        backgroundColor: [
+            'rgb(255, 99, 132)',
+            'rgb(54, 162, 235)',
+            'rgb(255, 205, 86)'
+        ]
+    }]
+};
+
+// Initialize charts
+document.addEventListener('DOMContentLoaded', function() {
+    const userGrowthCtx = document.getElementById('userGrowthChart').getContext('2d');
+    new Chart(userGrowthCtx, {
+        type: 'line',
+        data: userGrowthData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+
+    const questionDistCtx = document.getElementById('questionDistributionChart').getContext('2d');
+    new Chart(questionDistCtx, {
+        type: 'doughnut',
+        data: questionDistributionData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+
+    // Update statistics (replace with real API calls)
+    document.getElementById('total-users').textContent = '1,234';
+    document.getElementById('active-subscriptions').textContent = '856';
+    document.getElementById('pending-payments').textContent = '23';
+    document.getElementById('total-questions').textContent = '2,450';
+});
+</script>
+{% endblock %}

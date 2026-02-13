@@ -1,0 +1,242 @@
+#!/usr/bin/env python3
+"""
+Standalone test script to verify the Telegram parse error fix.
+This tests the escape_markdown_content function without importing the full app.
+"""
+
+import sys
+import os
+
+# Add the project root to the path so we can import helpers directly
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# Import the helpers module directly (avoiding circular imports)
+import importlib.util
+spec = importlib.util.spec_from_file_location("helpers", "app/utils/helpers.py")
+helpers = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(helpers)
+
+escape_markdown_content = helpers.escape_markdown_content
+escape_markdown_dict = helpers.escape_markdown_dict
+
+
+def test_escape_markdown_content():
+    """Test the comprehensive escape_markdown_content function"""
+    
+    print("=" * 60)
+    print("Testing escape_markdown_content function")
+    print("=" * 60)
+    
+    test_cases = [
+        # (input, should_have_backslash, description)
+        ("user_name", True, "Underscore should be escaped"),
+        ("user*name", True, "Asterisk should be escaped"),
+        ("user[name]", True, "Brackets should be escaped"),
+        ("user(name)", True, "Parentheses should be escaped"),
+        ("normal text", False, "Normal text stays unchanged"),
+        ("John_Smith", True, "Realistic username"),
+        ("Test_User_123", True, "Username with numbers"),
+        ("", False, "Empty string"),
+        (None, False, "None input"),
+        (123, False, "Non-string input"),
+        ("item[1]", True, "Brackets with number"),
+        ("test+value", True, "Plus should be escaped"),
+        ("test=value", True, "Equals should be escaped"),
+        ("test|value", True, "Pipe should be escaped"),
+        ("test{value}", True, "Braces should be escaped"),
+        ("test.value", True, "Period should be escaped"),
+        ("test!value", True, "Exclamation should be escaped"),
+    ]
+    
+    print("-" * 60)
+    
+    all_passed = True
+    for input_val, should_have_escapes, description in test_cases:
+        try:
+            result = escape_markdown_content(input_val)
+            has_backslash = '\\' in result
+            
+            if should_have_escapes and not has_backslash:
+                print(f"FAIL: {description} ({repr(input_val)}) should have been escaped")
+                all_passed = False
+            elif not should_have_escapes and has_backslash:
+                print(f"FAIL: {description} ({repr(input_val)}) should NOT have been escaped")
+                all_passed = False
+            else:
+                print(f"PASS: {description}")
+                if len(str(input_val)) <= 20:
+                    print(f"       {repr(input_val)} -> {repr(result)}")
+        except Exception as e:
+            print(f"FAIL: {description} ({repr(input_val)}) raised {e}")
+            all_passed = False
+    
+    print("-" * 60)
+    return all_passed
+
+
+def test_escape_markdown_dict():
+    """Test escaping entire dictionaries of question data"""
+    
+    print("\nTesting escape_markdown_dict function")
+    print("-" * 60)
+    
+    # Test with a question-like dictionary
+    question_data = {
+        "question_text": "What is H2O_Formula?",
+        "option_a": "Water*Solution",
+        "option_b": "Hydrogen_Oxygen",
+        "option_c": "Normal_Solution",
+        "option_d": "Simple*Answer",
+        "correct_option": "A",
+        "explanation": "Water (H2O) is the universal solvent."
+    }
+    
+    escaped = escape_markdown_dict(question_data)
+    
+    # Check that all string values are escaped
+    expected_escapes = [
+        ("question_text", "\\_"),  # H2O\_Formula
+        ("option_a", "\\*"),       # Water\*Solution
+        ("option_b", "\\_"),       # Hydrogen\_Oxygen
+        ("option_c", "\\_"),       # Normal\_Solution
+        ("option_d", "\\*"),       # Simple\*Answer
+    ]
+    
+    all_passed = True
+    for field, expected in expected_escapes:
+        if expected not in escaped[field]:
+            print(f"FAIL: {field} should contain {repr(expected)}")
+            all_passed = False
+        else:
+            print(f"PASS: {field} correctly escaped")
+    
+    # Test with non-string values (should pass through)
+    mixed_data = {
+        "question_text": "Test_Question",
+        "correct_option": "A",  # String but no special chars
+        "time_taken": 30,       # Integer - should pass through
+        "is_correct": True,     # Boolean - should pass through
+    }
+    
+    mixed_escaped = escape_markdown_dict(mixed_data)
+    
+    if mixed_escaped["time_taken"] != 30:
+        print("FAIL: Non-string values should pass through unchanged")
+        all_passed = False
+    else:
+        print("PASS: Non-string values pass through unchanged")
+    
+    if mixed_escaped["is_correct"] != True:
+        print("FAIL: Booleans should pass through unchanged")
+        all_passed = False
+    else:
+        print("PASS: Booleans pass through unchanged")
+    
+    print("-" * 60)
+    return all_passed
+
+
+def test_problematic_content():
+    """Test with realistic problematic content that would cause parse errors"""
+    
+    print("\nTesting problematic content that causes parse errors:")
+    print("-" * 60)
+    
+    problematic_cases = [
+        ("Chemistry_Basics", "Subject name with underscore"),
+        ("Organic_Chemistry_101", "Subject with multiple underscores"),
+        ("Unit*Test", "Subject with asterisk"),
+        ("Question[1]", "Question with brackets"),
+        ("Formula (H2O)", "Question with parentheses"),
+        ("Multiple_Special_Chars_Here", "Multiple special characters"),
+    ]
+    
+    all_passed = True
+    for content, description in problematic_cases:
+        escaped = escape_markdown_content(content)
+        
+        # Check that at least one special char was escaped
+        special_chars = ['_', '*', '[', ']', '(', ')']
+        has_escape = any(f'\\{c}' in escaped for c in special_chars)
+        
+        if not has_escape:
+            print(f"WARNING: {description} ({repr(content)}) may cause parse errors")
+            all_passed = False
+        else:
+            print(f"PASS: {description}")
+            print(f"       {repr(content)} -> {repr(escaped)}")
+    
+    print("-" * 60)
+    return all_passed
+
+
+def test_edge_cases():
+    """Test edge cases and boundary conditions"""
+    
+    print("\nTesting edge cases:")
+    print("-" * 60)
+    
+    edge_cases = [
+        ("", "Empty string"),
+        (None, "None input"),
+        (123, "Integer input"),
+        (45.67, "Float input"),
+        ("   ", "Whitespace only"),
+        ("_underscore_only", "Only underscore"),
+        ("*asterisk_only", "Only asterisk"),
+        ("normal_text_no_special", "No special characters"),
+        ("text_with_underscore_and_text", "Mixed text"),
+    ]
+    
+    all_passed = True
+    for content, description in edge_cases:
+        try:
+            result = escape_markdown_content(content)
+            # Should never raise exception, should return string
+            if not isinstance(result, str):
+                print(f"FAIL: {description} - returned non-string")
+                all_passed = False
+            else:
+                print(f"PASS: {description}")
+        except Exception as e:
+            print(f"FAIL: {description} raised {e}")
+            all_passed = False
+    
+    print("-" * 60)
+    return all_passed
+
+
+def main():
+    """Run all tests"""
+    print("=" * 60)
+    print("Telegram Parse Error Fix - Comprehensive Test Suite")
+    print("=" * 60)
+    print()
+    
+    test1 = test_escape_markdown_content()
+    test2 = test_escape_markdown_dict()
+    test3 = test_problematic_content()
+    test4 = test_edge_cases()
+    
+    print()
+    print("=" * 60)
+    if test1 and test2 and test3 and test4:
+        print("ALL TESTS PASSED!")
+        print()
+        print("The escape_markdown_content function correctly escapes")
+        print("all MarkdownV2 special characters to prevent parse errors.")
+        print()
+        print("Key characters escaped: _ * [ ] ( ) ~ ` > # + - = | { } . !")
+    else:
+        print("SOME TESTS FAILED!")
+        print("Please review the output above.")
+        return 1
+    print("=" * 60)
+    
+    return 0
+
+
+if __name__ == "__main__":
+    exit(main())
+
+

@@ -1,0 +1,986 @@
+"""
+Admin Management Handler - Telegram Quiz Bot
+Handle admin management commands: /add_admin, /remove_admin, /list_admins
+Enhanced with full UI support for admin CRUD operations
+"""
+
+from aiogram import Router, types, F
+from aiogram.filters import Command, StateFilter
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.context import FSMContext
+from sqlalchemy import select, desc
+
+from app.keyboards.admin import AdminKeyboard, AdminManageKeyboard
+from app.keyboards.menu import MainMenuKeyboard
+from app.utils.constants import EMOJIS
+from app.db.base import get_db
+from app.repositories.admin_repo import TelegramAdminRepository
+from app.repositories.admin_log_repo import AdminLogRepository
+from app.repositories.user_repo import UserRepository
+
+router = Router()
+
+
+# ==================== FSM States for Admin Management ====================
+
+class AdminManagementStates(StatesGroup):
+    """States for the admin management flow"""
+    waiting_for_admin_user_id = State()
+    waiting_for_admin_username = State()
+    waiting_for_admin_role = State()
+    waiting_for_confirm_remove = State()
+
+
+@router.message(Command("add_admin"))
+async def add_admin_command(message: types.Message, is_superadmin: bool = False,
+                           admin_role: str = None):
+    """Add a new admin - Super Admin only"""
+    user_id = message.from_user.id
+    parts = message.text.split()
+
+    if not is_superadmin:
+        await message.answer("❌ Access denied. Super Admin only.", parse_mode='Markdown')
+        return
+
+    if len(parts) < 2:
+        await message.answer("Usage: /add_admin <user_id> [role]", parse_mode='Markdown')
+        return
+
+    try:
+        target_user_id = int(parts[1])
+    except ValueError:
+        await message.answer("Invalid user ID", parse_mode='Markdown')
+        return
+
+    role = 'admin'
+    if len(parts) >= 3 and parts[2].lower() in ['admin', 'superadmin']:
+        role = parts[2].lower()
+
+    async for session in get_db():
+        admin_repo = TelegramAdminRepository(session)
+        user_repo = UserRepository(session)
+        log_repo = AdminLogRepository(session)
+
+        target_user = await user_repo.get_user(target_user_id)
+        if not target_user:
+            await message.answer(f"User {target_user_id} not found", parse_mode='Markdown')
+            return
+
+        existing = await admin_repo.get_admin(target_user_id)
+        if existing and existing.is_active:
+            await message.answer(f"User is already an admin", parse_mode='Markdown')
+            return
+
+        username = target_user.username
+        await admin_repo.create_admin(target_user_id, username, role, user_id)
+        await log_repo.log_action(user_id, "Add Admin", f"Added {username} as {role}")
+
+    await message.answer(f"✅ Admin added: @{username} as {role}", parse_mode='Markdown')
+
+
+@router.message(Command("remove_admin"))
+async def remove_admin_command(message: types.Message, is_superadmin: bool = False):
+    """Remove an admin - Super Admin only"""
+    user_id = message.from_user.id
+    parts = message.text.split()
+
+    if not is_superadmin:
+        await message.answer("❌ Access denied. Super Admin only.", parse_mode='Markdown')
+        return
+
+    if len(parts) < 2:
+        await message.answer("Usage: /remove_admin <user_id>", parse_mode='Markdown')
+        return
+
+    try:
+        target_user_id = int(parts[1])
+    except ValueError:
+        await message.answer("Invalid user ID", parse_mode='Markdown')
+        return
+
+    if target_user_id == user_id:
+        await message.answer("Cannot remove yourself", parse_mode='Markdown')
+        return
+
+    async for session in get_db():
+        admin_repo = TelegramAdminRepository(session)
+        user_repo = UserRepository(session)
+        log_repo = AdminLogRepository(session)
+
+        admin = await admin_repo.get_admin(target_user_id)
+        if not admin:
+            await message.answer("User is not an admin", parse_mode='Markdown')
+            return
+
+        target_user = await user_repo.get_user(target_user_id)
+        username = target_user.username if target_user else None
+
+        await admin_repo.remove_admin(target_user_id)
+        await log_repo.log_action(user_id, "Remove Admin", f"Removed {username}")
+
+    await message.answer(f"✅ Admin removed: @{username}", parse_mode='Markdown')
+
+
+@router.message(Command("list_admins"))
+async def list_admins_command(message: types.Message, is_admin: bool = False):
+    """List all admins"""
+    if not is_admin:
+        await message.answer("❌ Access denied.", parse_mode='Markdown')
+        return
+
+    async for session in get_db():
+        admin_repo = TelegramAdminRepository(session)
+        admins = await admin_repo.list_admins()
+        stats = await admin_repo.get_admin_stats()
+
+    text = f"👑 *Admin List*\n\n"
+    text += f"Total: {stats['total_admins']} | Super: {stats['superadmins']} | Admin: {stats['regular_admins']}\n\n"
+
+    for admin in admins:
+        status = "✅" if admin.is_active else "❌"
+        role = "👑" if admin.role == 'superadmin' else "👥"
+        text += f"{role} {status} @{admin.username or 'N/A'} (`{admin.user_id}`)\n"
+
+    await message.answer(text, parse_mode='Markdown')
+
+
+@router.message(Command("admin_help"))
+async def admin_help_command(message: types.Message, is_admin: bool = False,
+                             is_superadmin: bool = False):
+    """Show admin help"""
+    text = "👑 *Admin Help*\n\n"
+    
+    if is_superadmin:
+        text += "👑 Super Admin:\n"
+        text += "• /add_admin <id> [role] - Add admin\n"
+        text += "• /remove_admin <id> - Remove admin\n"
+        text += "• /list_admins - List all admins\n\n"
+    
+    text += "🔧 Admin Commands:\n"
+    text += "• /admin - Admin panel\n"
+    text += "• /admin_stats - Statistics\n"
+    text += "• /admin_users - Manage users\n"
+    text += "• /admin_payments - Manage payments"
+
+    await message.answer(text, parse_mode='Markdown')
+
+
+# ==================== Cancel Command Handler ====================
+
+@router.message(Command("cancel"))
+async def cancel_admin_flow(message: types.Message, state: FSMContext):
+    """Cancel the admin creation flow"""
+    current_state = await state.get_state()
+    if current_state is None:
+        return
+    
+    await state.clear()
+    
+    await message.answer(
+        "❌ *Operation Cancelled*\n\n"
+        "Admin creation has been cancelled.",
+        parse_mode='Markdown',
+        reply_markup=MainMenuKeyboard.get_main_menu()
+    )
+
+
+# ==================== Message Handlers for FSM Flow ====================
+
+@router.message(StateFilter(AdminManagementStates.waiting_for_admin_user_id))
+async def process_admin_user_id(message: types.Message, state: FSMContext, is_superadmin: bool = False):
+    """Process user ID input for admin creation"""
+    if not is_superadmin:
+        await message.answer("❌ Access denied. Super Admin only.", parse_mode='Markdown')
+        await state.clear()
+        return
+
+    user_id = message.from_user.id
+    text = message.text.strip()
+
+    try:
+        target_user_id = int(text)
+    except ValueError:
+        await message.answer(
+            "❌ *Invalid User ID*\n\n"
+            "Please send a valid numeric Telegram User ID.\n"
+            "Example: 123456789\n\n"
+            "Send /cancel to cancel.",
+            parse_mode='Markdown'
+        )
+        return
+
+    async for session in get_db():
+        admin_repo = TelegramAdminRepository(session)
+        user_repo = UserRepository(session)
+        log_repo = AdminLogRepository(session)
+
+        target_user = await user_repo.get_user(target_user_id)
+        if not target_user:
+            await message.answer(
+                f"❌ *User Not Found*\n\n"
+                f"User with ID `{target_user_id}` has not started the bot.\n\n"
+                f"Make sure the user has started the bot first.\n\n"
+                f"Send /cancel to cancel.",
+                parse_mode='Markdown'
+            )
+            await state.clear()
+            return
+
+        existing = await admin_repo.get_admin(target_user_id)
+        if existing and existing.is_active:
+            await message.answer(
+                f"❌ *Already an Admin*\n\n"
+                f"User @{target_user.username} is already an admin.\n\n"
+                f"Send /cancel to cancel.",
+                parse_mode='Markdown'
+            )
+            await state.clear()
+            return
+
+        username = target_user.username
+        
+        # Save target user info in state
+        await state.update_data(target_user_id=target_user_id, username=username)
+        
+        # Ask for role selection
+        await state.set_state(AdminManagementStates.waiting_for_admin_role)
+
+    await message.answer(
+        f"👤 *User Found: @{username}*\n\n"
+        f"Select the role for this user:",
+        parse_mode='Markdown',
+        reply_markup=AdminManageKeyboard.get_role_selection_keyboard(for_user_id=target_user_id)
+    )
+
+
+@router.message(StateFilter(AdminManagementStates.waiting_for_admin_username))
+async def process_admin_username(message: types.Message, state: FSMContext, is_superadmin: bool = False):
+    """Process username input for admin creation"""
+    if not is_superadmin:
+        await message.answer("❌ Access denied. Super Admin only.", parse_mode='Markdown')
+        await state.clear()
+        return
+
+    user_id = message.from_user.id
+    text = message.text.strip().lstrip('@')
+
+    async for session in get_db():
+        admin_repo = TelegramAdminRepository(session)
+        user_repo = UserRepository(session)
+        log_repo = AdminLogRepository(session)
+
+        # Search for user by username
+        target_user = await user_repo.get_user_by_username(text)
+        if not target_user:
+            await message.answer(
+                f"❌ *User Not Found*\n\n"
+                f"User @{text} has not started the bot.\n\n"
+                f"Make sure the user has started the bot first.\n\n"
+                f"Send /cancel to cancel.",
+                parse_mode='Markdown'
+            )
+            return
+
+        target_id = target_user.user_id
+        username = target_user.username
+
+        existing = await admin_repo.get_admin(target_id)
+        if existing and existing.is_active:
+            await message.answer(
+                f"❌ *Already an Admin*\n\n"
+                f"User @{username} is already an admin.\n\n"
+                f"Send /cancel to cancel.",
+                parse_mode='Markdown'
+            )
+            await state.clear()
+            return
+
+        # Save target user info in state
+        await state.update_data(target_user_id=target_id, username=username)
+        
+        # Ask for role selection
+        await state.set_state(AdminManagementStates.waiting_for_admin_role)
+
+    await message.answer(
+        f"👤 *User Found: @{username}*\n\n"
+        f"Select the role for this user:",
+        parse_mode='Markdown',
+        reply_markup=AdminManageKeyboard.get_role_selection_keyboard(for_user_id=target_id)
+    )
+
+
+@router.message(StateFilter(AdminManagementStates.waiting_for_admin_role))
+async def process_admin_role(message: types.Message, state: FSMContext, is_superadmin: bool = False):
+    """Process role selection for admin creation (fallback if keyboard not used)"""
+    if not is_superadmin:
+        await message.answer("❌ Access denied. Super Admin only.", parse_mode='Markdown')
+        await state.clear()
+        return
+
+    text = message.text.strip().lower()
+    
+    if text in ['admin', 'a']:
+        role = 'admin'
+    elif text in ['superadmin', 'super', 's']:
+        role = 'superadmin'
+    else:
+        await message.answer(
+            "❌ *Invalid Role*\n\n"
+            f"Please send 'admin' or 'superadmin'.\n\n"
+            f"Send /cancel to cancel.",
+            parse_mode='Markdown'
+        )
+        return
+
+    # Get the stored user info
+    data = await state.get_data()
+    target_user_id = data.get('target_user_id')
+    username = data.get('username')
+
+    if not target_user_id:
+        await message.answer(
+            "❌ *Session Expired*\n\n"
+            "Please start the admin creation process again.\n\n"
+            "Send /cancel to cancel.",
+            parse_mode='Markdown'
+        )
+        await state.clear()
+        return
+
+    async for session in get_db():
+        admin_repo = TelegramAdminRepository(session)
+        log_repo = AdminLogRepository(session)
+
+        await admin_repo.create_admin(target_user_id, username, role, message.from_user.id)
+        await log_repo.log_action(
+            message.from_user.id, 
+            "Add Admin", 
+            f"Added @{username} as {role}"
+        )
+
+    await state.clear()
+
+    await message.answer(
+        f"✅ *Admin Added Successfully*\n\n"
+        f"👤 User: @{username}\n"
+        f"🔖 Role: {role}\n"
+        f"👑 Added by: You",
+        parse_mode='Markdown',
+        reply_markup=AdminManageKeyboard.get_admin_management()
+    )
+
+
+@router.callback_query(F.data.startswith("admin_role_"), StateFilter(AdminManagementStates.waiting_for_admin_role))
+async def admin_role_selection_via_callback(callback: types.CallbackQuery, state: FSMContext, is_superadmin: bool = False):
+    """Handle role selection via callback for admin creation"""
+    if not is_superadmin:
+        await callback.answer("Access denied. Super Admin only.", show_alert=True)
+        return
+
+    # Parse the callback data: admin_role_<role>_<user_id>
+    parts = callback.data.split("_")
+    role = parts[2] if len(parts) > 2 else 'admin'
+    target_user_id = int(parts[3]) if len(parts) > 3 else None
+
+    if not target_user_id:
+        await callback.message.edit_text(
+            "❌ *Error*\n\n"
+            "Invalid callback data.",
+            parse_mode='Markdown',
+            reply_markup=AdminManageKeyboard.get_admin_management()
+        )
+        await callback.answer()
+        await state.clear()
+        return
+
+    async for session in get_db():
+        admin_repo = TelegramAdminRepository(session)
+        user_repo = UserRepository(session)
+        log_repo = AdminLogRepository(session)
+
+        # Get user info
+        user = await user_repo.get_user(target_user_id)
+        if not user:
+            await callback.message.edit_text(
+                f"❌ User not found with ID: {target_user_id}",
+                parse_mode='Markdown',
+                reply_markup=AdminManageKeyboard.get_add_admin_menu()
+            )
+            await callback.answer()
+            await state.clear()
+            return
+
+        username = user.username
+        
+        # Check if already an admin
+        existing = await admin_repo.get_admin(target_user_id)
+        if existing and existing.is_active:
+            await callback.message.edit_text(
+                f"❌ *Already an Admin*\n\n"
+                f"User @{username} is already an admin.",
+                parse_mode='Markdown',
+                reply_markup=AdminManageKeyboard.get_admin_management()
+            )
+            await callback.answer()
+            await state.clear()
+            return
+
+        # Create the admin
+        await admin_repo.create_admin(target_user_id, username, role, callback.from_user.id)
+        await log_repo.log_action(
+            callback.from_user.id, 
+            "Add Admin", 
+            f"Added @{username} as {role}"
+        )
+
+    await state.clear()
+
+    await callback.message.edit_text(
+        f"✅ *Admin Added Successfully*\n\n"
+        f"👤 User: @{username}\n"
+        f"🔖 Role: {role}\n"
+        f"👑 Added by: You",
+        parse_mode='Markdown',
+        reply_markup=AdminManageKeyboard.get_admin_management()
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_manage_admins")
+async def manage_admins_callback(callback: types.CallbackQuery, state: FSMContext, is_admin: bool = False):
+    """Show admin management menu"""
+    # Clear any pending states when entering admin management
+    await state.clear()
+    
+    if not is_admin:
+        await callback.answer("Access denied", show_alert=True)
+        return
+
+    await callback.message.edit_text(
+        "👑 *Admin Management*",
+        parse_mode='Markdown',
+        reply_markup=AdminManageKeyboard.get_admin_management()
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_list_all_admins")
+async def list_all_admins_callback(callback: types.CallbackQuery, is_admin: bool = False):
+    """List all admins with enhanced details"""
+    if not is_admin:
+        await callback.answer("Access denied", show_alert=True)
+        return
+
+    async for session in get_db():
+        admin_repo = TelegramAdminRepository(session)
+        admins = await admin_repo.get_all_admins_with_details()
+
+    text = "👑 *Admin List*\n\n"
+    
+    for admin in admins:
+        status = "✅" if admin['is_active'] else "❌"
+        role = "👑" if admin['role'] == 'superadmin' else "👥"
+        adder = admin.get('added_by')
+        adder_text = f"by @{adder['username']}" if adder and adder.get('username') else ""
+        text += f"{role} {status} @{admin['username'] or 'N/A'} (`{admin['user_id']}`) {adder_text}\n"
+
+    await callback.message.edit_text(text, parse_mode='Markdown',
+                                     reply_markup=AdminManageKeyboard.get_admin_list_keyboard(admins))
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_referrals_leaderboard")
+async def referrals_leaderboard_callback(callback: types.CallbackQuery, is_admin: bool = False):
+    """Show top referrers"""
+    if not is_admin:
+        await callback.answer("Access denied", show_alert=True)
+        return
+
+    from app.repositories.referral_repo import ReferralRepository
+    from app.repositories.user_repo import UserRepository
+
+    async for session in get_db():
+        referral_repo = ReferralRepository(session)
+        top_referrers = await referral_repo.get_top_referrers(20)
+
+    text = "🏆 *Top Referrers*\n\n"
+    for i, referrer in enumerate(top_referrers, 1):
+        medal = {1: '🥇', 2: '🥈', 3: '🥉'}.get(i, '🔹')
+        text += f"{medal} #{i} {referrer['name']} - {referrer['referral_count']}\n"
+
+    await callback.message.edit_text(text, parse_mode='Markdown',
+                                     reply_markup=AdminManageKeyboard.get_back_to_admin_keyboard())
+    await callback.answer()
+
+
+# ==================== ADD ADMIN CALLBACKS ====================
+
+@router.callback_query(F.data == "admin_add_admin_menu")
+async def add_admin_menu_callback(callback: types.CallbackQuery, is_superadmin: bool = False):
+    """Show add admin menu"""
+    if not is_superadmin:
+        await callback.answer("Access denied. Super Admin only.", show_alert=True)
+        return
+
+    await callback.message.edit_text(
+        "➕ *Add New Admin*\n\n"
+        "Choose how to add a new admin:",
+        parse_mode='Markdown',
+        reply_markup=AdminManageKeyboard.get_add_admin_menu()
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_add_by_userid")
+async def add_admin_by_userid_callback(callback: types.CallbackQuery, state: FSMContext, is_superadmin: bool = False):
+    """Prompt for user ID to add admin"""
+    if not is_superadmin:
+        await callback.answer("Access denied. Super Admin only.", show_alert=True)
+        return
+
+    # Set FSM state to wait for user ID
+    await state.set_state(AdminManagementStates.waiting_for_admin_user_id)
+
+    await callback.message.edit_text(
+        "🔢 *Add Admin by User ID*\n\n"
+        "Please send the user's Telegram User ID.\n"
+        "You can get this from @userinfobot or other Telegram bots.\n\n"
+        "⚠️ Send /cancel to cancel this operation.",
+        parse_mode='Markdown',
+        reply_markup=AdminManageKeyboard.get_back_to_admin_keyboard()
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_add_by_username")
+async def add_admin_by_username_callback(callback: types.CallbackQuery, state: FSMContext, is_superadmin: bool = False):
+    """Prompt for username to add admin"""
+    if not is_superadmin:
+        await callback.answer("Access denied. Super Admin only.", show_alert=True)
+        return
+
+    # Set FSM state to wait for username
+    await state.set_state(AdminManagementStates.waiting_for_admin_username)
+
+    await callback.message.edit_text(
+        "👤 *Add Admin by Username*\n\n"
+        "Please send the user's Telegram username (without @).\n\n"
+        "Note: The user must have started the bot at least once.\n\n"
+        "⚠️ Send /cancel to cancel this operation.",
+        parse_mode='Markdown',
+        reply_markup=AdminManageKeyboard.get_back_to_admin_keyboard()
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin_role_"))
+async def admin_role_selection_callback(callback: types.CallbackQuery, is_superadmin: bool = False):
+    """Handle role selection for new admin (direct callback without FSM)"""
+    if not is_superadmin:
+        await callback.answer("Access denied. Super Admin only.", show_alert=True)
+        return
+
+    # Parse the callback data: admin_role_<role>_<user_id>
+    parts = callback.data.split("_")
+    role = parts[2] if len(parts) > 2 else 'admin'
+    user_id = int(parts[3]) if len(parts) > 3 else None
+
+    async for session in get_db():
+        admin_repo = TelegramAdminRepository(session)
+        user_repo = UserRepository(session)
+        log_repo = AdminLogRepository(session)
+
+        if user_id:
+            # Adding a specific user
+            user = await user_repo.get_user(user_id)
+            if not user:
+                await callback.message.edit_text(
+                    f"❌ User not found with ID: {user_id}",
+                    parse_mode='Markdown',
+                    reply_markup=AdminManageKeyboard.get_add_admin_menu()
+                )
+                await callback.answer()
+                return
+
+            username = user.username
+            await admin_repo.create_admin(user_id, username, role, callback.from_user.id)
+            await log_repo.log_action(
+                callback.from_user.id, 
+                "Add Admin", 
+                f"Added @{username} as {role}"
+            )
+
+            await callback.message.edit_text(
+                f"✅ *Admin Added Successfully*\n\n"
+                f"👤 User: @{username}\n"
+                f"🔖 Role: {role}\n"
+                f"👑 Added by: You",
+                parse_mode='Markdown',
+                reply_markup=AdminManageKeyboard.get_admin_management()
+            )
+        else:
+            # Just show role selection keyboard for user input
+            await callback.message.edit_text(
+                f"📋 *Select Role*\n\n"
+                f"Choose the role for the new admin:",
+                parse_mode='Markdown',
+                reply_markup=AdminManageKeyboard.get_role_selection_keyboard()
+            )
+
+    await callback.answer()
+
+
+# ==================== REMOVE ADMIN CALLBACKS ====================
+
+@router.callback_query(F.data == "admin_remove_admin_menu")
+async def remove_admin_menu_callback(callback: types.CallbackQuery, is_superadmin: bool = False):
+    """Show remove admin menu with list of admins"""
+    if not is_superadmin:
+        await callback.answer("Access denied. Super Admin only.", show_alert=True)
+        return
+
+    async for session in get_db():
+        admin_repo = TelegramAdminRepository(session)
+        admins = await admin_repo.list_admins()
+
+    # Filter out the current user from the list
+    current_user_id = callback.from_user.id
+    other_admins = [a for a in admins if a.user_id != current_user_id]
+
+    if not other_admins:
+        await callback.message.edit_text(
+            "❌ *No Other Admins*\n\n"
+            "There are no other admins to remove.",
+            parse_mode='Markdown',
+            reply_markup=AdminManageKeyboard.get_admin_management()
+        )
+        await callback.answer()
+        return
+
+    await callback.message.edit_text(
+        "➖ *Remove Admin*\n\n"
+        "Select an admin to remove:",
+        parse_mode='Markdown',
+        reply_markup=AdminManageKeyboard.get_remove_admin_menu(other_admins)
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin_remove_select_"))
+async def remove_admin_select_callback(callback: types.CallbackQuery, is_superadmin: bool = False):
+    """Show confirmation for removing a specific admin"""
+    if not is_superadmin:
+        await callback.answer("Access denied. Super Admin only.", show_alert=True)
+        return
+
+    user_id = int(callback.data.split("_")[-1])
+
+    async for session in get_db():
+        admin_repo = TelegramAdminRepository(session)
+        admin = await admin_repo.get_admin(user_id)
+
+    if not admin:
+        await callback.message.edit_text(
+            "❌ Admin not found",
+            parse_mode='Markdown',
+            reply_markup=AdminManageKeyboard.get_admin_management()
+        )
+        await callback.answer()
+        return
+
+    username = admin.username or "Unknown"
+
+    await callback.message.edit_text(
+        f"⚠️ *Confirm Remove Admin*\n\n"
+        f"Are you sure you want to remove this admin?\n\n"
+        f"👤 @{username}\n"
+        f"🔖 Role: {admin.role}\n"
+        f"🆔 ID: {user_id}",
+        parse_mode='Markdown',
+        reply_markup=AdminManageKeyboard.get_remove_confirmation_keyboard(user_id, username)
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin_remove_confirm_"))
+async def remove_admin_confirm_callback(callback: types.CallbackQuery, is_superadmin: bool = False):
+    """Confirm and execute admin removal"""
+    if not is_superadmin:
+        await callback.answer("Access denied. Super Admin only.", show_alert=True)
+        return
+
+    user_id = int(callback.data.split("_")[-1])
+
+    async for session in get_db():
+        admin_repo = TelegramAdminRepository(session)
+        user_repo = UserRepository(session)
+        log_repo = AdminLogRepository(session)
+
+        admin = await admin_repo.get_admin(user_id)
+        if not admin:
+            await callback.message.edit_text(
+                "❌ Admin not found",
+                parse_mode='Markdown',
+                reply_markup=AdminManageKeyboard.get_admin_management()
+            )
+            await callback.answer()
+            return
+
+        username = admin.username
+        await admin_repo.remove_admin(user_id)
+        await log_repo.log_action(
+            callback.from_user.id,
+            "Remove Admin",
+            f"Removed @{username} as {admin.role}"
+        )
+
+    await callback.message.edit_text(
+        f"✅ *Admin Removed*\n\n"
+        f"@{username} has been removed from the admin list.",
+        parse_mode='Markdown',
+        reply_markup=AdminManageKeyboard.get_admin_management()
+    )
+    await callback.answer()
+
+
+# ==================== CHANGE ROLE CALLBACKS ====================
+
+@router.callback_query(F.data == "admin_change_role_menu")
+async def change_role_menu_callback(callback: types.CallbackQuery, is_superadmin: bool = False):
+    """Show menu for selecting admin to change role"""
+    if not is_superadmin:
+        await callback.answer("Access denied. Super Admin only.", show_alert=True)
+        return
+
+    async for session in get_db():
+        admin_repo = TelegramAdminRepository(session)
+        admins = await admin_repo.list_admins()
+
+    await callback.message.edit_text(
+        "🔄 *Change Admin Role*\n\n"
+        "Select an admin to change their role:",
+        parse_mode='Markdown',
+        reply_markup=AdminManageKeyboard.get_change_role_menu(admins)
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin_change_role_select_"))
+async def change_role_select_callback(callback: types.CallbackQuery, is_superadmin: bool = False):
+    """Show role selection for specific admin"""
+    if not is_superadmin:
+        await callback.answer("Access denied. Super Admin only.", show_alert=True)
+        return
+
+    user_id = int(callback.data.split("_")[-1])
+
+    async for session in get_db():
+        admin_repo = TelegramAdminRepository(session)
+        admin = await admin_repo.get_admin(user_id)
+
+    if not admin:
+        await callback.message.edit_text(
+            "❌ Admin not found",
+            parse_mode='Markdown',
+            reply_markup=AdminManageKeyboard.get_admin_management()
+        )
+        await callback.answer()
+        return
+
+    username = admin.username or "Unknown"
+    current_role = admin.role
+    new_role = 'superadmin' if current_role == 'admin' else 'admin'
+    new_role_text = "Super Admin" if new_role == 'superadmin' else "Admin"
+
+    await callback.message.edit_text(
+        f"🔄 *Change Role for @{username}*\n\n"
+        f"Current role: {current_role}\n"
+        f"New role: {new_role_text}",
+        parse_mode='Markdown',
+        reply_markup=AdminManageKeyboard.get_confirm_role_change_keyboard(user_id, new_role, username)
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin_role_confirm_"))
+async def role_change_confirm_callback(callback: types.CallbackQuery, is_superadmin: bool = False):
+    """Confirm and execute role change"""
+    if not is_superadmin:
+        await callback.answer("Access denied. Super Admin only.", show_alert=True)
+        return
+
+    parts = callback.data.split("_")
+    user_id = int(parts[3])
+    new_role = parts[4]
+
+    async for session in get_db():
+        admin_repo = TelegramAdminRepository(session)
+        log_repo = AdminLogRepository(session)
+
+        admin = await admin_repo.get_admin(user_id)
+        if not admin:
+            await callback.message.edit_text(
+                "❌ Admin not found",
+                parse_mode='Markdown',
+                reply_markup=AdminManageKeyboard.get_admin_management()
+            )
+            await callback.answer()
+            return
+
+        old_role = admin.role
+        username = admin.username
+        await admin_repo.promote_admin(user_id, new_role)
+        await log_repo.log_action(
+            callback.from_user.id,
+            "Change Admin Role",
+            f"Changed @{username} role from {old_role} to {new_role}"
+        )
+
+    await callback.message.edit_text(
+        f"✅ *Role Updated*\n\n"
+        f"@{username} is now a *{new_role}*",
+        parse_mode='Markdown',
+        reply_markup=AdminManageKeyboard.get_admin_management()
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin_toggle_role_"))
+async def toggle_role_callback(callback: types.CallbackQuery, is_superadmin: bool = False):
+    """Quick toggle role from admin detail view"""
+    if not is_superadmin:
+        await callback.answer("Access denied. Super Admin only.", show_alert=True)
+        return
+
+    user_id = int(callback.data.split("_")[-1])
+
+    async for session in get_db():
+        admin_repo = TelegramAdminRepository(session)
+        admin = await admin_repo.get_admin(user_id)
+
+    if not admin:
+        await callback.message.edit_text(
+            "❌ Admin not found",
+            parse_mode='Markdown',
+            reply_markup=AdminManageKeyboard.get_admin_management()
+        )
+        await callback.answer()
+        return
+
+    new_role = 'superadmin' if admin.role == 'admin' else 'admin'
+    new_role_text = "Super Admin" if new_role == 'superadmin' else "Admin"
+
+    await callback.message.edit_text(
+        f"🔄 *Change Role Confirmation*\n\n"
+        f"Change @{admin.username}'s role to *{new_role_text}*?",
+        parse_mode='Markdown',
+        reply_markup=AdminManageKeyboard.get_confirm_role_change_keyboard(user_id, new_role, admin.username)
+    )
+    await callback.answer()
+
+
+# ==================== ADMIN DETAIL & LIST CALLBACKS ====================
+
+@router.callback_query(F.data.startswith("admin_view_"))
+async def admin_view_callback(callback: types.CallbackQuery, is_admin: bool = False):
+    """Show details for a specific admin"""
+    if not is_admin:
+        await callback.answer("Access denied", show_alert=True)
+        return
+
+    user_id = int(callback.data.split("_")[-1])
+
+    async for session in get_db():
+        admin_repo = TelegramAdminRepository(session)
+        admin_details = await admin_repo.get_admin_with_adder_info(user_id)
+
+    if not admin_details:
+        await callback.message.edit_text(
+            "❌ Admin not found",
+            parse_mode='Markdown',
+            reply_markup=AdminManageKeyboard.get_back_to_admin_keyboard()
+        )
+        await callback.answer()
+        return
+
+    admin = admin_details['admin']
+    adder = admin_details['adder']
+    adder_text = f"@{adder['username']}" if adder and adder.get('username') else f"ID: {adder['user_id']}" if adder else "Unknown"
+
+    text = (
+        f"👤 *Admin Details*\n\n"
+        f"Username: @{admin.username or 'N/A'}\n"
+        f"User ID: `{admin.user_id}`\n"
+        f"Role: {admin.role}\n"
+        f"Status: {'✅ Active' if admin.is_active else '❌ Inactive'}\n"
+        f"Added by: {adder_text}\n"
+        f"Created: {admin.created_at.strftime('%d %b %Y %H:%M')}\n"
+    )
+
+    await callback.message.edit_text(
+        text,
+        parse_mode='Markdown',
+        reply_markup=AdminManageKeyboard.get_admin_detail_keyboard(user_id, admin.role)
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin_list_page_"))
+async def admin_list_pagination_callback(callback: types.CallbackQuery, is_admin: bool = False):
+    """Handle pagination for admin list"""
+    if not is_admin:
+        await callback.answer("Access denied", show_alert=True)
+        return
+
+    page = int(callback.data.split("_")[-1])
+
+    async for session in get_db():
+        admin_repo = TelegramAdminRepository(session)
+        admins = await admin_repo.get_all_admins_with_details()
+
+    await callback.message.edit_text(
+        "👥 *Admin List*",
+        parse_mode='Markdown',
+        reply_markup=AdminManageKeyboard.get_admin_list_keyboard(admins, page)
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_users_referrals")
+async def users_referrals_callback(callback: types.CallbackQuery, is_admin: bool = False):
+    """Show user referrals management"""
+    if not is_admin:
+        await callback.answer("Access denied", show_alert=True)
+        return
+
+    from app.repositories.referral_repo import ReferralRepository
+    from sqlalchemy import desc
+
+    async for session in get_db():
+        referral_repo = ReferralRepository(session)
+        
+        # Get recent referrals
+        from app.db.models import Referral, User
+        query = select(Referral).order_by(desc(Referral.created_at)).limit(50)
+        result = await session.execute(query)
+        referrals = result.scalars().all()
+
+    text = "🔗 *User Referrals*\n\n"
+    
+    if referrals:
+        for referral in referrals[:10]:
+            status_emoji = "✅" if referral.status == 'completed' else "⏳" if referral.status == 'pending' else "❌"
+            text += f"{status_emoji} Referral {referral.id}: {referral.referrer_id} → {referral.referred_id} ({referral.status})\n"
+        
+        if len(referrals) > 10:
+            text += f"\n... and {len(referrals) - 10} more"
+    else:
+        text += "No referrals yet."
+
+    await callback.message.edit_text(
+        text,
+        parse_mode='Markdown',
+        reply_markup=AdminManageKeyboard.get_back_to_admin_keyboard()
+    )
+    await callback.answer()
+

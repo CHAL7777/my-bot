@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block title %}Leaderboard - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-trophy"></i> Leaderboard Management</h1>
+            <div>
+                <select class="form-select d-inline-block w-auto me-2" id="periodSelect" onchange="changePeriod()">
+                    <option value="overall" {% if period == 'overall' %}selected{% endif %}>Overall</option>
+                    <option value="monthly" {% if period == 'monthly' %}selected{% endif %}>Monthly</option>
+                    <option value="weekly" {% if period == 'weekly' %}selected{% endif %}>Weekly</option>
+                    <option value="daily" {% if period == 'daily' %}selected{% endif %}>Daily</option>
+                </select>
+                <button class="btn btn-danger" onclick="resetLeaderboard()">
+                    <i class="fas fa-refresh"></i> Reset Leaderboard
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <h5 class="card-title">Total Participants</h5>
+                <h3>{{ stats.period_stats.get(period, 0) if stats else 0 }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <h5 class="card-title">Top Score</h5>
+                <h3>{{ leaderboard[0].score if leaderboard else 0 }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <h5 class="card-title">Avg Accuracy</h5>
+                <h3>{{ "%.1f"|format(leaderboard[0].accuracy if leaderboard else 0) }}%</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <h5 class="card-title">Total Questions</h5>
+                <h3>{{ leaderboard[0].questions if leaderboard else 0 }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Leaderboard Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>{{ period.title() }} Leaderboard</h5>
+            </div>
+            <div class="card-body">
+                {% if leaderboard %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>User</th>
+                                <th>Score</th>
+                                <th>Accuracy</th>
+                                <th>Questions</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in leaderboard %}
+                            <tr {% if entry.rank <= 3 %}class="table-{% if entry.rank == 1 %}warning{% elif entry.rank == 2 %}secondary{% elif entry.rank == 3 %}info{% endif %}"{% endif %}>
+                                <td>
+                                    {% if entry.rank == 1 %}
+                                        <i class="fas fa-trophy text-warning"></i>
+                                    {% elif entry.rank == 2 %}
+                                        <i class="fas fa-medal text-secondary"></i>
+                                    {% elif entry.rank == 3 %}
+                                        <i class="fas fa-award text-info"></i>
+                                    {% else %}
+                                        {{ entry.rank }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        {% if entry.rank <= 3 %}
+                                        <div class="me-2">
+                                            {% if entry.rank == 1 %}🥇{% elif entry.rank == 2 %}🥈{% elif entry.rank == 3 %}🥉{% endif %}
+                                        </div>
+                                        {% endif %}
+                                        <div>
+                                            <strong>{{ entry.username }}</strong>
+                                            {% if entry.rank <= 10 %}
+                                            <br><small class="text-muted">Top Performer</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><strong>{{ entry.score }}</strong></td>
+                                <td>
+                                    <div class="progress" style="width: 100px;">
+                                        <div class="progress-bar bg-success" role="progressbar"
+                                             style="width: {{ entry.accuracy }}%"
+                                             aria-valuenow="{{ entry.accuracy }}"
+                                             aria-valuemin="0" aria-valuemax="100">
+                                            {{ "%.1f"|format(entry.accuracy) }}%
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>{{ entry.questions }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-info" onclick="viewUserStats({{ entry.user_id }})">
+                                        <i class="fas fa-chart-bar"></i> Stats
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-trophy fa-3x text-muted mb-3"></i>
+                    <h4>No leaderboard data available</h4>
+                    <p class="text-muted">No users have participated in quizzes yet for this period.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Top Performers -->
+{% if stats and stats.top_performers %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-star"></i> Top Performers (All Time)</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for performer in stats.top_performers[:6] %}
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <div class="mb-2">
+                                    <i class="fas fa-user-circle fa-2x text-primary"></i>
+                                </div>
+                                <h6>{{ performer.username }}</h6>
+                                <div class="small text-muted">
+                                    <div>Total Score: {{ performer.total_score }}</div>
+                                    <div>Avg Accuracy: {{ "%.1f"|format(performer.avg_accuracy) }}%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Reset Confirmation Modal -->
+<div class="modal fade" id="resetModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Reset Leaderboard</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Warning!</strong> This action will permanently reset the {{ period }} leaderboard.
+                    All rankings and scores will be lost. This action cannot be undone.
+                </div>
+                <p>Are you sure you want to proceed?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="confirmReset()">
+                    <i class="fas fa-refresh"></i> Yes, Reset Leaderboard
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function changePeriod() {
+    const period = document.getElementById('periodSelect').value;
+    window.location.href = '/leaderboard?period=' + period;
+}
+
+function resetLeaderboard() {
+    const modal = new bootstrap.Modal(document.getElementById('resetModal'));
+    modal.show();
+}
+
+function confirmReset() {
+    const period = document.getElementById('periodSelect').value;
+    window.location.href = '/leaderboard/reset/' + period;
+}
+
+function viewUserStats(userId) {
+    // In a real implementation, this would open a modal or redirect to user stats
+    window.location.href = '/users/' + userId + '/details';
+}
+</script>
+{% endblock %}
