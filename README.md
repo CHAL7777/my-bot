@@ -15,5 +15,5 @@ A comprehensive quiz bot for remedial students with payment system, progress tra
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/yourusername/telegram-quiz-bot.git
+git clone https://github.com/CHAL7777/telegram-quiz-bot.git
 cd telegram-quiz-bot# my-bot
